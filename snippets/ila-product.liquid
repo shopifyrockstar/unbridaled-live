@@ -1,0 +1,121 @@
+{% if product.tags contains '_select_diamond' %}
+<!-- has select diamond -->
+{% unless product.metafields['ila-ds'] == blank %}
+{% assign ilaMetas = product.metafields['ila-ds'] %}
+
+<div id='ila_diamond_gallery'>
+	<div class="close"></div>
+	<div class="ila-gallery"></div>
+</div>
+
+{% include 'ila-alert' %}
+
+
+{{ 'polyfill.min.js' | asset_url | script_tag}}
+<script>
+	if(!window.fetch){
+		var fetchPoly = "{{ 'fetch.umd.js' | asset_url}}";
+		function addScript( src ) {
+		  var s = document.createElement( 'script' );
+		  s.setAttribute( 'src', src );
+		  document.body.appendChild( s );
+		}
+		addScript(fetchPoly);
+	}
+
+	 var ilaDS = ilaDS || {};
+
+
+
+	 document.addEventListener('DOMContentLoaded', function(){
+	 	ilaDS.ajax = function(verb, url, data, params) {
+			if(params){
+				const query = this.qs(params);
+				if(query) url += '?'+ query;
+			}
+			return fetch(url, {
+				method: verb || 'GET',
+				headers:{
+					'Content-Type': 'application/json'
+				},
+				credentials:'same-origin',
+				body: data
+			}).then(function(resp){
+				if(resp.status == 200) return resp.json();
+				throw new Error('Unexpected Response '+ resp.status);
+			});
+		};
+
+		function addedToCart(){
+			console.log('used std added to cart');
+			location.href = '/cart';
+		}
+
+		function okForCart(){
+			console.log('used std okForCart');
+			return true; 
+		}
+
+		if( typeof ilaDS.okForCart == 'undefined'){
+			ilaDS.okForCart = okForCart;
+		}
+
+		if( typeof ilaDS.addedToCart == 'undefined'){
+			ilaDS.addedToCart = addedToCart;
+		}
+
+		ilaDS.qs = function(params){
+			if(typeof params == 'undefined' || params === null) return '';
+			const str = [];
+			Object.keys(params).forEach(function(k){
+				const val = params[k];
+				if(typeof val == 'undefined' || val === null) {
+					str.push(k +'=');
+					return;
+				}
+				if(Array.isArray(val)){
+					val.forEach(function(v){ str.push(k +'='+encodeURIComponent(v));});
+					return;
+				}
+				str.push(k +'='+encodeURIComponent(val));
+			});
+			
+			return str.join('&');
+		};
+
+		ilaDS.ajax('GET', '/apps/ids/install').then(function(data){
+			if(data.active){
+				var targetElem = document.querySelector(data.installAt);
+				if(targetElem && !(/\bila\b/.test(targetElem.className))) targetElem.style.visibility = 'hidden';
+			}
+			return null;
+		});
+
+
+	 	ilaDS.product = '{{product.id}}';
+	 	var ds = ilaDS['{{product.id}}'] || {};
+
+  		ilaDS['{{product.id}}'] = Object.assign(ds, {
+	 		initialVariantId: '{{product.selected_or_first_available_variant.id}}',
+	 		productHandle : '{{product.handle}}',
+	 		shape: '{{ilaMetas.diamond_shape}}',
+	 		sourceType: '{{ilaMetas.source_type}}',
+	 		grouping: '{{ilaMetas.diamond_group}}',
+	 		minWt: parseInt('{{ilaMetas.min_wt_points}}', 10)/100,
+	 		maxWt: parseInt('{{ilaMetas.max_wt_points}}', 10)/100
+	 	});
+
+	 	document.querySelector('#ila_diamond_gallery .close').
+	 	addEventListener('click', function(){
+	 		ilaDS.dispatchEvent('ilaGalleryClosed');
+	 	});
+
+	 	var body = document.getElementsByTagName('body')[0];
+	 	body.appendChild(document.getElementById('ila_diamond_gallery'));
+
+	 });
+
+</script>
+
+{% endunless %}
+{% endif %}

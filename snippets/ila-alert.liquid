@@ -1,0 +1,16 @@
+<div id='ila_alert' class="ila-modal">
+	<div class="close"></div>
+	<div class="ila-message"></div>
+</div>
+
+<script>
+	var ilaDS = ilaDS || {};
+	document.addEventListener('DOMContentLoaded', function(){
+		document.querySelector('#ila_alert .close').
+		addEventListener('click', function(){
+			ilaDS.dispatchEvent('ilaAlertClosed');
+		});
+		var body = document.getElementsByTagName('body')[0];
+		body.appendChild(document.getElementById('ila_alert'));
+	});
+</script>

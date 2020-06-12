@@ -1,0 +1,93 @@
+<div class="homepage-container">
+  {% if section.settings.logo_image %}
+  {% comment %}
+  <img class="logo-image" src="{{ section.settings.logo_image | img_url: 'master'}}">
+  {% endcomment %}
+  <img class="logo-image" src="{{ 'unbridaled_logo.svg' | asset_url }}">
+  {% endif %}
+  {% comment %}<img class="floating-diamonds" src="{{ section.settings.background_image | img_url: '950x'}}">{% endcomment %}
+  <img class="floating-diamonds" src="{{ 'Icons-05.svg' | asset_url }}" style="">
+  <div class="heading-title">    
+    <h1>{{ section.settings.title }}</h1>
+    <a class="atc-button" href="{{ section.settings.atc_link }}">
+      {{ section.settings.atc_title }}
+    </a>
+    <p class="under-title">{{ section.settings.atc_under_title }}</p>
+  </div>
+  <img class="tablet-image" src="{{ section.settings.tablet_image | img_url: '800x' }}">
+</div>
+{% schema %}
+{
+  "name": "Homepage Schedule section",
+  "settings": [
+    {
+      "type": "image_picker",
+      "id": "logo_image",
+      "label": "Image"
+    },
+    {
+      "type": "image_picker",
+      "id": "background_image",
+      "label": "Background Diamond Image"
+    },    
+    {
+      "type": "text",
+      "id": "title",
+      "label": "Heading",
+      "default": "Sell Diamonds & Bridal"
+    },
+    {
+      "type": "text",
+      "id": "atc_title",
+      "label": "ATC Button Title",
+      "default": "Schedule a demo"
+    },
+    {
+      "type": "url",
+      "id": "atc_link",
+      "label": "Button link"
+    },
+    {
+      "type": "text",
+      "id": "atc_under_title",
+      "label": "ATC Button Bottom Title",
+      "default": "Free for 30 days."
+    },
+    {
+      "type": "image_picker",
+      "id": "tablet_image",
+      "label": "Tablet Image"
+    },
+    {
+      "type": "richtext",
+      "id": "content",
+      "label": "Text",
+      "default": "<p>Add your own custom content to give more information about your store, availability details...</p>"
+    },
+    {
+      "type": "text",
+      "id": "button_label",
+      "label": "Button label"
+    },
+    {
+      "type": "url",
+      "id": "button_link",
+      "label": "Button link"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_parallax",
+      "label": "Show parallax scrolling effect",
+      "info": "Only applies to desktop.",
+      "default": true
+    }
+  ],
+  "presets": [
+    {
+      "category": "Image",
+      "name": "Homepage Schedule",
+      "settings": {}
+    }
+  ]
+}
+{% endschema %}

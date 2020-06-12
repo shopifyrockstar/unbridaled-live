@@ -1,0 +1,42 @@
+<script>
+  /** this script controls some of the interaction between Unbridaled and your product page. 
+    * In particular the setPrice function needs to retrieve the element that holds the displayed price
+    */
+    
+  var ilaDS = ilaDS || {};
+  document.addEventListener('DOMContentLoaded', function(){
+
+  function setPrice(currentVariant, currentDiamond){
+    if(currentDiamond && currentVariant){
+      var priceElem = document.querySelector(ilaDS.priceAt || '.price-item--regular'); // this is the element that holds the displayed price on the product page
+      if(!priceElem) {
+        console.error('no on page price element found. Please check your Unbridaled configuration');
+        return;
+      }
+      var price = parseFloat(currentVariant.price) /100 + currentDiamond.price;
+      console.log('have combined price '+ price);
+      Array.from(priceElem.childNodes).forEach(function(n){ priceElem.removeChild(n);});
+      priceElem.appendChild(document.createTextNode('$ '+ price.toLocaleString(undefined, {maximumFractionDigits:2})));
+    }else if(!currentVariant){
+      console.log('no variant price yet');
+    }else{
+      console.log('no diamond price yet');
+    }
+    
+  }
+
+/** override ilaDS.okForCart or ilaDS.addedToCart to control those actions. 
+ */
+
+  var ds = ilaDS['{{product.id}}'] || {};
+  ilaDS['{{product.id}}'] = Object.assign(ds, {
+    setPrice:setPrice,
+    variantSelectType: 'pushstate'
+    //variantSelectIdEvt : 
+    //variantSelectEvt : 'selectVariant'
+  });
+  
+
+
+});
+</script>

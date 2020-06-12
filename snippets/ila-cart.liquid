@@ -1,0 +1,178 @@
+{{ 'polyfill.min.js' | asset_url | script_tag}}
+{{ 'fetch.umd.js' | asset_url | script_tag}}
+<script>
+
+	var ilaDS = ilaDS || {};
+
+	ilaDS.ajax = function(verb, url, data, params) {
+		if(params){
+			const query = this.qs(params);
+			if(query) url += '?'+ query;
+		}
+		return fetch(url, {
+			method: verb || 'GET',
+			headers:{
+				'Content-Type': 'application/json'
+			},
+			credentials:'same-origin',
+			body: data
+		}).then(function(resp){
+			if(resp.status == 200) return resp.json();
+			throw new Error('Unexpected Response '+ resp.status);
+		});
+	};
+
+	ilaDS.qs = function(params){
+		if(typeof params == 'undefined' || params === null) return '';
+		const str = [];
+		Object.keys(params).forEach(function(k){
+			const val = params[k];
+			if(typeof val == 'undefined' || val === null) {
+				str.push(k +'=');
+				return;
+			}
+			if(Array.isArray(val)){
+				val.forEach(function(v){ str.push(k +'='+encodeURIComponent(v));});
+				return;
+			}
+			str.push(k +'='+encodeURIComponent(val));
+		});
+		
+		return str.join('&');
+	};
+
+	document.addEventListener('DOMContentLoaded', function(){
+	 	var ilaSKUs = [];
+		{%- for item in cart.items -%}
+			{%-if item.product.tags contains '_ila_product' %}
+				ilaSKUs[ilaSKUs.length] = {
+					variant: '{{item.variant_id}}',
+					sku: '{{item.sku}}',
+					handle: '{{item.product.handle}}'
+				};
+			{%- endif %}
+		{%- endfor %}
+
+		var cart = {{cart | json }};
+
+	 	var ilaGroups = {};
+
+	 	cart.items.forEach(function(it, idx){
+	 		if(it.properties){
+	 			var pairValue = null;
+	 			console.log(JSON.stringify(it.properties));
+	 			if(it.properties.forEach){
+		 			it.properties.forEach(function(p){
+		 				if(p.name == 'Pair'){
+		 					pairValue = p.value;
+		 				}
+		 			});
+		 		}else{
+		 			if(it.properties.Pair){
+		 				pairValue = it.properties.Pair;
+		 			}
+		 		}
+	 			if(!pairValue) return;
+	 			var group = ilaGroups[pairValue];
+	 			if(!group){
+	 				group = [];
+	 				ilaGroups[pairValue] =  group;
+	 			}
+	 			group.push({
+	 				line:idx+1,
+	 				item:it
+	 			});
+	 		}
+	 	});
+	 	var ilaRemoves = {}, anyRemoves = false;
+
+	 	for(var k in ilaGroups){
+	 		var grp = ilaGroups[k];
+	 		if(grp.length == 1){
+	 			ilaRemoves[''+ grp[0].item.variant_id] = 0;
+	 			anyRemoves = true;
+	 		}
+	 	}
+
+	 	if(anyRemoves){
+	 		ilaDS.ajax('POST', '/cart/update.js', JSON.stringify({updates:ilaRemoves})).then(function(resp){
+				window.location.reload(true);
+			});
+		}
+	 	
+	 	ilaDS.cart = {
+	 		skus:ilaSKUs,
+	 		line_groups:ilaGroups
+	 	};
+
+
+	 	var checkoutButton = document.querySelector("input[type=submit][name='checkout']");
+	 	if(checkoutButton){
+	 		var dsChecked = false;
+	 		checkoutButton.addEventListener('click', function(e){
+		 		if(!dsChecked && ilaDS.cart &&  ilaDS.cart.skus){
+		 			e.preventDefault();
+		 			//check whether diamond is still available
+		 			console.log('check diamond then submit');
+		 			var skusToRemove = {};
+		 			var skusToCheck = [].concat(ilaDS.cart.skus);
+		 			function checkSkus(){
+		 				if(!skusToCheck.length) return Promise.resolve(null);
+		 				var skuSpec = skusToCheck.shift();
+		 				var sku = skuSpec.sku;
+		 				return ilaDS.ajax('GET', '/apps/ids/is_in_stock', null, {sku:sku, ts:Date.now()}).
+		 					then(function(resp){
+		 						if(!resp.success){ 
+		 							throw new Error((resp.info && resp.info.message) || resp.message || 'An error occured');
+		 						}
+		 						if(!resp.payload.available) {
+		 							skusToRemove[''+ skuSpec.variant] = 0;
+		 							throw new Error('<div class="msg-head">We apologize but this diamond has just been sold.</div><div>Please return to the product page to choose from a new selection of diamonds.</div>');
+		 						}
+		 						return null;
+		 					}).
+		 					then(function(){
+		 						return ilaDS.ajax('GET', '/products/'+skuSpec.handle +'.js', null, {ts:Date.now()}).
+		 						then(function(resp){
+		 							if(!resp.variants[0].available){
+		 								skusToRemove[''+ skuSpec.variant] = 0;
+		 								throw new Error('<div class="msg-head">We apologize but this diamond has just been sold.</div><div>Please return to the product page to choose from a new selection of diamonds.</div>');
+		 							}
+		 							return null;
+		 						});
+		 					}).then(checkSkus);
+		 			}
+
+		 			checkSkus().then(function(){
+		 				dsChecked = true;
+		 				var nextEvent = new MouseEvent(e.type, e);
+		 				checkoutButton.dispatchEvent(nextEvent);
+		 			}, function(e){
+						var alertDisplay = document.getElementById('ila_alert');
+						var body = document.getElementsByTagName('body')[0];
+						body.addEventListener('ilaAlertClosed', ()=>{
+							ilaDS.toggleClass(alertDisplay, 'active', false);
+							ilaDS.ajax('POST', '/cart/update.js', JSON.stringify({updates:skusToRemove})).then(function(resp){
+							window.location.reload(true);
+						});
+						}, {once:true} );
+
+						var msgWrap = alertDisplay.querySelector('.ila-message');
+						msgWrap.innerHTML = e.message;
+
+						ilaDS.toggleClass(alertDisplay, 'active', true);
+		 				
+		 			});
+		 			
+		 		}else{
+		 			console.log('skip ila check');
+		 		}
+		 	});
+	 	}
+	 	
+		
+	});
+
+</script>
+
+{% include 'ila-alert' %}
